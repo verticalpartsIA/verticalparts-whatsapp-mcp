@@ -40,7 +40,7 @@ O gateway de eventos roda como **processo separado** do MCP (`verticalparts-what
 ## RAG-005 — Estado real da integração por sistema (não confundir "pretendido" com "implementado")
 
 - **Pós-Venda 360**: já manda WhatsApp de verdade, mas fala **direto com a Evolution API**, contornando tanto o MCP quanto o gateway de eventos (que já existe desde 2026-09-20, mas essa migração específica ainda não foi feita). Documentado como temporário.
-- **VP Click**: gateway pronto para receber (`config/systems.example.yaml` já tem a entrada `vpclick`, templates `task_completed`/`task_due_soon`/`task_blocked`/`task_reassigned` já existem) — falta o lado do VP Click emitir o evento. Integração ainda **não implementada do lado de origem**.
+- **VP Click**: **religado ao gateway em 2026-09-20** (branch `feature/whatsapp-events-gateway-integration` em `005_vpclick`, ainda não mesclada em `main`) — o motor de trigger→pg_net→Edge Function já existente naquele repo (fases 1-4, 19/09; `supabase/functions/whatsapp-notify-event`) ganhou um caminho de envio real que chama `POST /events` deste gateway (templates `vpclick_watcher_added`/`vpclick_mention`/`vpclick_task_completed`, adicionados a `config/templates.yaml` nesta mesma data), em vez de um dia falar direto com a Evolution API. **Continua em dry-run por padrão**: só ativa quando alguém configurar os secrets `EVENTS_GATEWAY_URL`/`EVENTS_GATEWAY_TOKEN` e `WHATSAPP_REAL_SEND=true` na Edge Function do projeto `vp-click` (ref `sfpnjwllcmentoocylow`) — decisão separada, ainda não tomada. Ligar o envio real de fato afeta usuários reais de produção (quem criou cada tarefa, quem foi mencionado, quem observa) — não fazer sem revisar antes.
 - **VP Requisições**: mesma situação — gateway pronto (`requisicoes`, templates `requisition_*`), falta o VP Requisições emitir. O gateway não decide alçada — só transporta e registra; a regra de negócio continua pertencendo ao VP Requisições.
 - **Borderô/Hermes**: mesma situação — gateway pronto (`bordero`, template `bordero_relatorio`), falta o Borderô/Hermes emitir. Telegram continua em paralelo, não é substituído.
 
@@ -94,6 +94,22 @@ Nunca como padrão:
 - assumir que um sistema (VP Click, Requisições, Borderô) já emite eventos para o gateway só porque o gateway existe e está pronto para receber — confirme antes (RAG-005);
 - aceitar template livre no gateway de eventos, ou adicionar um jeito de o `data` de um evento virar texto arbitrário — o ponto inteiro do gateway é nunca aceitar texto livre de um sistema;
 - criar uma tool genérica tipo `whatsapp_chamar_api` que exponha a Evolution API diretamente — o objetivo deste MCP é justamente esconder esse detalhe.
+
+## RAG-010 — Teste real do gateway de eventos contra a Evolution API (2026-09-20)
+
+Executado o runbook PARTE H pela primeira vez: evento simulado manualmente (mesmo formato que o VP Click emitiria — `source: vpclick`, template `task_completed`, token real de `config/systems.yaml`) contra `POST /events` em produção, para um destinatário de teste explicitamente autorizado pelo operador. Resultado: `200`, `message_id` real da Evolution API — mensagem chegou de verdade. Reenvio da mesma `idempotency_key` devolveu `replay: true`, mesmo `message_id`, sem mandar uma segunda mensagem.
+
+**Bug real encontrado e corrigido durante esse teste**: `WHATSAPP_MCP_ALLOW_WRITES` estava `false` nos dois serviços (`whatsapp-mcp.service` e `whatsapp-events.service`) no processo real, apesar de:
+- a documentação (`05_RUNBOOK` PARTE E, `00_READ_FIRST` seção 6) registrar a decisão de 2026-09-20 como "mantido ligado, protege os dois canais igualmente";
+- os drop-ins systemd `*.service.d/allow-writes.conf` existirem e declararem `Environment="WHATSAPP_MCP_ALLOW_WRITES=true"`.
+
+Causa raiz: neste host, quando a mesma variável aparece em `EnvironmentFile=` (o `.env`, que tinha `false`) e em `Environment=` de um drop-in (`true`), **o valor do `EnvironmentFile=` prevalece no processo real** — o oposto do que a intuição sobre ordem de carregamento sugere. Verificado lendo `/proc/<pid>/environ` do processo real, não só `systemctl show` (que mostra os fragmentos declarados, não necessariamente o valor resolvido). Ou seja: o canal MCP (`whatsapp_enviar_texto`) também estava, na prática, bloqueado por escrita há um tempo indeterminado, sem que a documentação refletisse isso — a "hierarquia de verdade" (RAG-002) existe exatamente para este tipo de caso: o que a documentação registra como decisão não é o mesmo que o estado vivo observado.
+
+Correção aplicada: valor real editado direto no `.env` (`WHATSAPP_MCP_ALLOW_WRITES=true`, fonte única compartilhada pelos dois serviços via `EnvironmentFile=`), drop-ins `allow-writes.conf` removidos dos dois serviços (eram inertes/enganosos). Confirmado após a correção, lendo `/proc/<pid>/environ` dos dois processos reiniciados: ambos `true`.
+
+**O que este teste NÃO prova**: o VP Click (`005_vpclick`) ainda não tem, no seu próprio código, nenhuma chamada real a `POST /events` — o evento usado neste teste foi simulado manualmente com o token real de `vpclick`, não emitido pela aplicação. Não atualizar RAG-005 para "implementado" até que exista uma chamada real partindo do código do VP Click.
+
+**Lição estrutural**: nunca confiar em `systemctl show -p Environment` nem na existência de um drop-in como prova de que uma flag de ambiente está de fato ativa num processo — validar sempre lendo o ambiente do processo em execução (`/proc/<pid>/environ`) ou o comportamento observado (uma chamada real recusada/aceita). Isso vale para qualquer flag crítica desta família de MCPs, não só `WHATSAPP_MCP_ALLOW_WRITES`.
 
 ## RAG-009 — Quando parar
 

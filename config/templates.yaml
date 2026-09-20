@@ -22,3 +22,11 @@ templates:
 
   # Bordero/Hermes (008_BorderoDiario)
   bordero_relatorio: 'Segue o refresh do bordero do dia {data}. Acesse: {url}'
+
+  # VP Click (005_vpclick) -- motor de eventos por trigger (fases 1-4,
+  # supabase/functions/whatsapp-notify-event). Texto equivalente ao que a
+  # function ja monta hoje em dry-run (notification_dispatch_log) -- so
+  # trocando o texto livre por template fixo + dados, como o gateway exige.
+  vpclick_watcher_added: 'VP Click aqui! Oi {recipient_first_name}, voce foi adicionado(a) como observador(a) da tarefa "{title}" (responsavel: {actor_name}).'
+  vpclick_mention: 'VP Click aqui! Oi {recipient_first_name}, {actor_name} {mention_verb} em "{title}".'
+  vpclick_task_completed: 'VP Click aqui! Oi {recipient_first_name}, {actor_name} {verb} a tarefa "{title}".'
