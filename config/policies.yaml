@@ -1,0 +1,12 @@
+confirmations:
+  critical: "CONFIRMO"
+
+write_gate:
+  env_flag: "WHATSAPP_MCP_ALLOW_WRITES"
+  default: false
+  note: "Precisa estar true E confirmation='CONFIRMO' junto -- nenhuma das duas sozinha basta."
+
+notes:
+  - "whatsapp_enviar_texto e a unica tool desta familia com efeito irreversivel fora da infraestrutura da VerticalParts."
+  - "Nunca gravar o conteudo da mensagem em auditoria, so metadados (numero, message_id, tamanho)."
+  - "Gatilhos de plataforma (VP Click, Requisicoes, Pos-Venda, Bordero) nao passam por este MCP ainda -- ver 01_RAG RAG-005."
