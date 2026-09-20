@@ -55,7 +55,7 @@ Testado nesta sessão, via o conector real conectado ao claude.ai (não script):
 
 ## 7. Próximos passos (não-bloqueantes, na ordem de prioridade)
 
-1. Decidir com o operador se `WHATSAPP_MCP_ALLOW_WRITES=true` deve continuar ligado agora que o gate por confirmação (`CONFIRMO`) está ativo em produção (ver seção 6) — antes disso o flag era a única proteção e estava sozinho, ligado, sem o checklist cumprido.
+1. ~~Decidir com o operador se `WHATSAPP_MCP_ALLOW_WRITES=true` deve continuar ligado~~ — **decidido em 2026-09-20: mantido ligado**, agora que o gate por confirmação (`CONFIRMO`) está ativo em produção (ver seção 6). A dupla trava (flag + `CONFIRMO`) é considerada suficiente pelo operador; reavaliar se o uso real mostrar necessidade de mais controle (ex.: quando o gateway de eventos existir).
 2. Construir o "gateway de eventos" já desenhado em `01_RAG` RAG-004/RAG-005 — hoje é só documentação, a implementação real (`events/`) ainda não existe.
 3. Migrar o Pós-Venda 360 do acesso direto à Evolution API para o gateway central (trabalho no repositório do Pós-Venda 360, não neste).
 4. Rotacionar a `EVOLUTION_API_KEY` — não há evidência de que isso já tenha sido feito desde que o projeto documentou essa pendência.
