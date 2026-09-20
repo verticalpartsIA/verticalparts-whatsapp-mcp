@@ -1,0 +1,23 @@
+# Sistemas internos autorizados a enviar eventos para o gateway.
+# Cada um tem um token proprio -- nunca compartilhar o mesmo token entre
+# sistemas diferentes, para que vazar o token de um nao comprometa os outros.
+#
+# Copie este arquivo para config/systems.yaml (ignorado pelo Git) e gere um
+# token forte por sistema: openssl rand -hex 32
+
+systems:
+  vpclick:
+    token: "SUBSTITUA_POR_UM_TOKEN_FORTE_UNICO"
+    description: "VP Click (005_vpclick) -- gatilhos de tarefa"
+
+  requisicoes:
+    token: "SUBSTITUA_POR_UM_TOKEN_FORTE_UNICO"
+    description: "VP Requisicoes (003_requisicoes) -- aprovacao/compra/recebimento"
+
+  posvenda360:
+    token: "SUBSTITUA_POR_UM_TOKEN_FORTE_UNICO"
+    description: "Pos-Venda 360 (004_sac_posvenda360) -- ainda fala direto com a Evolution API hoje, nao migrado para o gateway"
+
+  bordero:
+    token: "SUBSTITUA_POR_UM_TOKEN_FORTE_UNICO"
+    description: "Bordero/Hermes (008_BorderoDiario) -- relatorios e alertas financeiros"

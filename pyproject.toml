@@ -11,10 +11,14 @@ dependencies = [
   "mcp>=1.0.0,<2",
   "httpx>=0.27.0",
   "python-dotenv>=1.0.1",
+  "PyYAML>=6.0",
+  "starlette>=0.37",
+  "uvicorn>=0.29",
 ]
 
 [project.scripts]
 verticalparts-whatsapp-mcp = "verticalparts_whatsapp_mcp.server:main"
+verticalparts-whatsapp-events = "verticalparts_whatsapp_mcp.events_app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/verticalparts_whatsapp_mcp"]

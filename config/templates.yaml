@@ -1,0 +1,24 @@
+# Templates de mensagem do gateway de eventos. Nome do template -> texto com
+# placeholders {campo}, preenchidos a partir do campo "data" do evento.
+#
+# Regra estrutural (nao contornar): o gateway de eventos NUNCA envia texto
+# livre vindo de um sistema interno -- so um destes templates registrados.
+# Isso e o que impede um sistema comprometido/com bug de mandar qualquer
+# mensagem arbitraria pelo WhatsApp corporativo.
+
+templates:
+  # VP Click (005_vpclick)
+  task_completed: 'A tarefa "{title}" foi concluida. Detalhes: {url}'
+  task_due_soon: 'Lembrete: a tarefa "{title}" esta com prazo proximo ({due_date}). Detalhes: {url}'
+  task_blocked: 'Atencao: a tarefa "{title}" foi marcada como bloqueada. Detalhes: {url}'
+  task_reassigned: 'A tarefa "{title}" foi atribuida a voce. Detalhes: {url}'
+
+  # VP Requisicoes (003_requisicoes)
+  requisition_pending_approval: 'Nova requisicao aguardando sua aprovacao: "{title}" (#{requisition_id}). Acesse: {url}'
+  requisition_approved: 'Sua requisicao "{title}" foi aprovada. Proximo passo: compra.'
+  requisition_rejected: 'Sua requisicao "{title}" foi rejeitada. Motivo: {reason}'
+  requisition_purchased: 'Compra confirmada para a requisicao "{title}". Previsao de entrega: {eta}'
+  requisition_received: 'Recebimento confirmado para a requisicao "{title}".'
+
+  # Bordero/Hermes (008_BorderoDiario)
+  bordero_relatorio: 'Segue o refresh do bordero do dia {data}. Acesse: {url}'

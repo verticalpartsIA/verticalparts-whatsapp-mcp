@@ -27,6 +27,13 @@ class Settings:
     audit_log: Path = Path(os.getenv("WHATSAPP_MCP_AUDIT_LOG", "./data/audit.jsonl"))
     allow_writes: bool = _bool("WHATSAPP_MCP_ALLOW_WRITES", False)
 
+    # Gateway de eventos (canal "gatilho de sistema", separado do MCP)
+    events_host: str = os.getenv("EVENTS_HOST", "127.0.0.1")
+    events_port: int = int(os.getenv("EVENTS_PORT", "8011"))
+    events_db_path: Path = Path(os.getenv("EVENTS_DB_PATH", "./data/events.sqlite3"))
+    events_systems_file: Path = Path(os.getenv("EVENTS_SYSTEMS_FILE", "./config/systems.yaml"))
+    events_templates_file: Path = Path(os.getenv("EVENTS_TEMPLATES_FILE", "./config/templates.yaml"))
+
     def validate(self) -> None:
         if not self.evolution_api_key:
             raise RuntimeError("EVOLUTION_API_KEY não configurada")

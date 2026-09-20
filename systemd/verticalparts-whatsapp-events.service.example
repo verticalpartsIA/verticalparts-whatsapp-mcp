@@ -1,0 +1,14 @@
+[Unit]
+Description=VerticalParts WhatsApp Events Gateway
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/verticalparts-whatsapp-mcp
+EnvironmentFile=/opt/verticalparts-whatsapp-mcp/.env
+ExecStart=/opt/verticalparts-whatsapp-mcp/.venv/bin/verticalparts-whatsapp-events
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

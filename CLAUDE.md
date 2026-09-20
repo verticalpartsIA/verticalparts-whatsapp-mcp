@@ -1,7 +1,7 @@
 # CLAUDE.md — VerticalParts WhatsApp MCP
 
-Versão operacional: 2026-09-19
-Status: **migração concluída** — deploy real na VPS movido para `/opt/verticalparts-whatsapp-mcp`, `whatsapp-mcp.service` rodando o novo código, validado pelo conector real (`whatsapp_status`) e pelo processo migrado (`CONFIRMO` bloqueando corretamente). Governança elevada: `whatsapp_enviar_texto` agora exige `CONFIRMO` além do flag de ambiente. Ver `00_READ_FIRST` seção 6.
+Versão operacional: 2026-09-20
+Status: **migração concluída + gateway de eventos implantado**. Deploy real na VPS em `/opt/verticalparts-whatsapp-mcp`, dois serviços systemd (`whatsapp-mcp.service` no `/mcp`, `whatsapp-events.service` no `/events`). `whatsapp_enviar_texto` exige `CONFIRMO` + flag; `POST /events` exige token por sistema + template fixo + idempotência (sem `CONFIRMO`, não há humano/LLM nessa chamada). Nenhum sistema real (VP Click/Requisições/Pós-Venda/Borderô) emite eventos ainda. Ver `00_READ_FIRST` seções 6-8.
 
 ## Leitura obrigatória
 
@@ -28,9 +28,10 @@ Este é o único MCP da família cujo efeito sai da infraestrutura da VerticalPa
 - `whatsapp_enviar_texto` exige as duas condições: `WHATSAPP_MCP_ALLOW_WRITES=true` no ambiente **e** `confirmation='CONFIRMO'` por chamada. Uma sem a outra não deve bastar — se você (LLM) estiver implementando isso, não remova nenhuma das duas travas.
 - Nunca use um número de exemplo genérico para testar envio de verdade — só para `whatsapp_status`/`whatsapp_verificar_numero`/`whatsapp_buscar_mensagens`, que não têm efeito real.
 - Nunca grave o conteúdo de uma mensagem em auditoria — só metadados (número, `message_id`, tamanho).
-- Gatilhos de plataforma (VP Click, Requisições, Pós-Venda, Borderô) **não passam por este MCP hoje** — não simule que passam. Ver `01_RAG` RAG-005.
-- Nunca mostre `EVOLUTION_API_KEY` nem `X-API-Key` do gateway.
-- Mudança estrutural (gateway de eventos implementado, sistema migrado para cá) exige atualizar `01_RAG` RAG-005 na mesma sessão.
+- O gateway de eventos (`POST /events`) existe desde 2026-09-20, mas nenhum sistema (VP Click, Requisições, Pós-Venda, Borderô) foi migrado para emiti-lo ainda — não simule que já passa. Ver `01_RAG` RAG-005.
+- `POST /events` nunca deve ganhar um `CONFIRMO` — quebraria o propósito de automação. Nunca deve aceitar texto livre — só `template` registrado em `config/templates.yaml`. As duas coisas são estruturais, não detalhes de implementação.
+- Nunca mostre `EVOLUTION_API_KEY`, `X-API-Key` do gateway MCP, nem tokens de `config/systems.yaml`.
+- Mudança estrutural (um sistema migrado para emitir eventos reais, webhook receiver implementado) exige atualizar `01_RAG` RAG-005 na mesma sessão.
 
 ## Continuidade operacional
 

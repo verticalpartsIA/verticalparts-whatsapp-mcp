@@ -33,16 +33,18 @@ Gatilho de sistema:  VP Click / Requisições / Pós-Venda / Borderô -> gateway
 Mensagem recebida:   WhatsApp -> Evolution API -> webhook central -> roteamento -> sistema/IA/humano
 ```
 
-Três responsabilidades deliberadamente separadas: **MCP** (comandos explícitos, este repositório), **gateway de eventos** (gatilhos automáticos dos sistemas internos — ainda não implementado, só desenhado), **webhook receiver** (mensagens recebidas — ainda não implementado). Nenhum sistema novo deve falar direto com `/message/*` da Evolution API — só através de um desses três canais.
+Três responsabilidades deliberadamente separadas: **MCP** (comandos explícitos, `server.py`), **gateway de eventos** (gatilhos automáticos dos sistemas internos, `events_app.py` — implementado em 2026-09-20), **webhook receiver** (mensagens recebidas — ainda não implementado). Nenhum sistema novo deve falar direto com `/message/*` da Evolution API — só através de um desses três canais.
+
+O gateway de eventos roda como **processo separado** do MCP (`verticalparts-whatsapp-events`, porta 8011, endpoint `POST /events` em `whatsapp-mcp.vpsistema.com/events`) — não é uma tool MCP, porque quem chama é um sistema, não uma LLM. Isso muda o modelo de segurança por completo: ver RAG-006B.
 
 ## RAG-005 — Estado real da integração por sistema (não confundir "pretendido" com "implementado")
 
-- **Pós-Venda 360**: já manda WhatsApp de verdade, mas fala **direto com a Evolution API**, contornando tanto o MCP quanto o gateway de eventos (que ainda não existe). Documentado como temporário, migração ainda não feita.
-- **VP Click**: integração pretendida (gatilhos de tarefa: `status_changed`, `priority_changed`, `assignee_changed`, `due_date_arrives`, `task_created`, `task_moved`), **não implementada**.
-- **VP Requisições**: integração pretendida (aviso de aprovação, resumo, link seguro), **não implementada**. O gateway não decide alçada — só transporta e registra; a regra de negócio pertence ao VP Requisições.
-- **Borderô/Hermes**: integração pretendida (envio de relatórios/borderôs, Telegram continua em paralelo), **não implementada**.
+- **Pós-Venda 360**: já manda WhatsApp de verdade, mas fala **direto com a Evolution API**, contornando tanto o MCP quanto o gateway de eventos (que já existe desde 2026-09-20, mas essa migração específica ainda não foi feita). Documentado como temporário.
+- **VP Click**: gateway pronto para receber (`config/systems.example.yaml` já tem a entrada `vpclick`, templates `task_completed`/`task_due_soon`/`task_blocked`/`task_reassigned` já existem) — falta o lado do VP Click emitir o evento. Integração ainda **não implementada do lado de origem**.
+- **VP Requisições**: mesma situação — gateway pronto (`requisicoes`, templates `requisition_*`), falta o VP Requisições emitir. O gateway não decide alçada — só transporta e registra; a regra de negócio continua pertencendo ao VP Requisições.
+- **Borderô/Hermes**: mesma situação — gateway pronto (`bordero`, template `bordero_relatorio`), falta o Borderô/Hermes emitir. Telegram continua em paralelo, não é substituído.
 
-Contrato de evento proposto (ainda não versionado em produção):
+Contrato de evento real (implementado em 2026-09-20, `POST /events` no gateway):
 
 ~~~json
 {
@@ -66,18 +68,31 @@ CRITICAL (`CONFIRMO` **e** `WHATSAPP_MCP_ALLOW_WRITES=true`): `whatsapp_enviar_t
 
 Descoberto na homologação de 2026-09-19: a trava original (só o flag `WHATSAPP_MCP_ALLOW_WRITES`) estava ligada em produção via override de systemd, sem confirmação de que o checklist de segurança do próprio projeto (`docs/security.md` original) tinha sido cumprido — nenhuma tool chegou a mandar mensagem real só porque o número de teste usado não existia. Uma trava única, controlada só por quem tem acesso ao host, não protege contra uma LLM (esta mesma, em qualquer sessão futura) decidir enviar uma mensagem real sem que ninguém tenha pedido. Por isso agora são duas: o flag (kill switch de infraestrutura, "este ambiente pode mandar mensagem real ou não") **e** `confirmation='CONFIRMO'` por chamada (a LLM precisa justificar e confirmar cada envio, não só o ambiente permitir). As duas precisam estar verdadeiras — uma sem a outra não basta.
 
+## RAG-006B — Segurança do gateway de eventos (`POST /events`) — não é o mesmo modelo do MCP
+
+O gateway de eventos não tem `CONFIRMO` porque não há humano nem LLM na chamada — quem chama é um sistema (VP Click, Requisições, Pós-Venda, Borderô). A segurança vem de quatro camadas diferentes, todas obrigatórias:
+
+1. **Token por sistema de origem** (`config/systems.yaml`, `Authorization: Bearer <token>`) — cada sistema tem o seu; um token vazado só compromete aquele sistema, não os outros (testado: um token válido para `vpclick` é recusado se o payload declarar `source: requisicoes`).
+2. **Template fixo, nunca texto livre** (`config/templates.yaml`) — o gateway recusa (`400`) qualquer `template` não registrado. Isso é o que impede um sistema com bug ou comprometido de mandar qualquer mensagem arbitrária pelo WhatsApp corporativo — o pior que pode acontecer é mandar um template legítimo com dados errados, não texto arbitrário.
+3. **Idempotência** (SQLite, `idempotency_key`) — reenviar a mesma chave nunca manda a mensagem de novo; devolve o resultado já processado (`replay: true`).
+4. **Mesmo kill switch do MCP** (`WHATSAPP_MCP_ALLOW_WRITES`) — se o operador desligar envios, os dois canais param juntos.
+
+Não adicionar `CONFIRMO` aqui — quebraria o próprio propósito de automação. Não remover nenhuma das quatro camadas acima achando que é redundante.
+
 ## RAG-007 — Segredos
 
 - `EVOLUTION_API_KEY`: autentica contra a Evolution API real (WhatsApp corporativo inteiro). Nunca versionar, nunca logar.
-- `X-API-Key` do gateway deste MCP: mesmo padrão dos três irmãos.
-- Conteúdo de mensagem: `audit.py` grava `chars` (tamanho) do texto enviado, não o texto em si — decisão deliberada de privacidade, já presente no código original.
+- `X-API-Key` do gateway MCP (`/mcp`): mesmo padrão dos três irmãos.
+- Token por sistema (`config/systems.yaml`, canal `/events`): nunca versionar (arquivo já no `.gitignore`), nunca reutilizar entre sistemas diferentes.
+- Conteúdo de mensagem: `audit.py` grava `chars` (tamanho) do texto enviado, não o texto em si — decisão deliberada de privacidade, já presente no código original. O gateway de eventos segue a mesma regra: audita `template`+`data_keys` implícitos via `chars`, nunca o texto renderizado.
 
 ## RAG-008 — Anti-padrões
 
 Nunca como padrão:
 - mandar mensagem de teste para um número real sem que o operador peça explicitamente e sem saber quem é o dono do número;
 - tratar aprovação de negócio (financeira, requisição) como decidível só por uma mensagem de texto livre recebida no WhatsApp — precisa de `approval_id`, token de uso único, expiração e idempotência (ver `02_SPEC`);
-- assumir que os gatilhos de plataforma já passam por este MCP — hoje não passam (RAG-005);
+- assumir que um sistema (VP Click, Requisições, Borderô) já emite eventos para o gateway só porque o gateway existe e está pronto para receber — confirme antes (RAG-005);
+- aceitar template livre no gateway de eventos, ou adicionar um jeito de o `data` de um evento virar texto arbitrário — o ponto inteiro do gateway é nunca aceitar texto livre de um sistema;
 - criar uma tool genérica tipo `whatsapp_chamar_api` que exponha a Evolution API diretamente — o objetivo deste MCP é justamente esconder esse detalhe.
 
 ## RAG-009 — Quando parar

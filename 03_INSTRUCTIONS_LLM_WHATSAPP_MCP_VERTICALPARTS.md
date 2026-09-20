@@ -38,7 +38,7 @@ Nunca use um número de exemplo (`5511999999999` ou similar) para testar `whatsa
 
 ## 6. Gatilhos de plataforma não passam por aqui (ainda)
 
-Se o operador perguntar "por que uma tarefa concluída no VP Click não mandou WhatsApp automaticamente", a resposta correta é: essa integração ainda não existe (ver `01_RAG` RAG-005) — não simule que funciona, não tente implementar isso ad-hoc chamando `whatsapp_enviar_texto` a partir de outro sistema sem que o gateway de eventos exista.
+Se o operador perguntar "por que uma tarefa concluída no VP Click não mandou WhatsApp automaticamente": desde 2026-09-20 o gateway de eventos (`POST /events`) existe e já sabe como processar esse tipo de evento — mas o VP Click ainda não foi atualizado para emiti-lo (ver `01_RAG` RAG-005). Não simule que a integração já funciona ponta a ponta, e não tente contornar isso chamando `whatsapp_enviar_texto` (canal MCP, exige `CONFIRMO`) para fazer o papel de uma automação — isso misturaria os dois canais e tiraria o rastro de auditoria correto do gateway de eventos.
 
 ## 7. Aprovações de negócio
 
