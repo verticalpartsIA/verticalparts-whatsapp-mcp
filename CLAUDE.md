@@ -1,7 +1,7 @@
 # CLAUDE.md — VerticalParts WhatsApp MCP
 
 Versão operacional: 2026-09-19
-Status: **código já em produção, extraído para repositório dedicado nesta data**. Governança elevada: `whatsapp_enviar_texto` agora exige `CONFIRMO` além do flag de ambiente.
+Status: **migração concluída** — deploy real na VPS movido para `/opt/verticalparts-whatsapp-mcp`, `whatsapp-mcp.service` rodando o novo código, validado pelo conector real (`whatsapp_status`) e pelo processo migrado (`CONFIRMO` bloqueando corretamente). Governança elevada: `whatsapp_enviar_texto` agora exige `CONFIRMO` além do flag de ambiente. Ver `00_READ_FIRST` seção 6.
 
 ## Leitura obrigatória
 

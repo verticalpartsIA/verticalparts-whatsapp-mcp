@@ -1,7 +1,7 @@
 # 00 — LEIA PRIMEIRO — VerticalParts WhatsApp MCP
 
-Versão documental: 2026-09-19
-Status: canônico, código real já em produção há dias — reorganizado num repositório dedicado nesta data
+Versão documental: 2026-09-20
+Status: canônico, **migração concluída e homologada** — código já rodava em produção antes deste repositório existir; nesta data foi extraído, com governança elevada, e o deploy real na VPS foi migrado para o novo repositório
 Escopo: WhatsApp corporativo da VerticalParts (via Evolution API) por LLM e, no futuro, por gatilhos internos
 
 ## 1. Finalidade deste conjunto
@@ -44,12 +44,22 @@ Testado nesta sessão, via o conector real conectado ao claude.ai (não script):
 
 **Descoberta estrutural importante**: os gatilhos de plataforma (VP Click, VP Requisições, Borderô) **não passam por este MCP hoje** — não existe integração implementada ainda (só documentada como "pretendida"). O Pós-Venda 360 já manda WhatsApp de verdade, mas fala **direto com a Evolution API**, contornando o MCP — documentado como temporário até migração controlada. Ou seja: a trava de escrita deste MCP protege o canal Claude/humano, não a automação de produção — as duas coisas nunca estiveram no mesmo caminho.
 
-## 6. Próximos passos (não-bloqueantes, na ordem de prioridade)
+## 6. Migração real concluída (2026-09-20)
 
-1. Decidir com o operador se `WHATSAPP_MCP_ALLOW_WRITES=true` deve continuar ligado agora que o gate por confirmação (`CONFIRMO`) foi adicionado ao código (ver `04_SDD` seção 2.3) — antes disso o flag era a única proteção e estava sozinho, ligado, sem o checklist cumprido.
-2. Construir o "gateway de eventos" já desenhado em `01_RAG` RAG-004/RAG-005 — hoje é só documentação (`docs/integrations.md` do projeto original), a implementação real (`events/`) ainda não existe.
+- Repositório publicado em `github.com/verticalpartsIA/verticalparts-whatsapp-mcp`;
+- deploy na VPS migrado de `/root/whatsapp-mcp-hub/whatsapp-mcp` para `/opt/verticalparts-whatsapp-mcp` (mesmo padrão dos três irmãos), `.env` real copiado sem recriar a `EVOLUTION_API_KEY`;
+- `whatsapp-mcp.service` (systemd) atualizado para o novo `WorkingDirectory`/`ExecStart`, reiniciado, `active`;
+- validado pelo conector real conectado ao claude.ai: `whatsapp_status` → `{"instance": {"instanceName": "pv360", "state": "open"}}`, mesmo resultado de antes da migração;
+- validado direto no processo migrado (import fresco, sem depender de cache de schema de cliente MCP): `whatsapp_enviar_texto` sem `confirmation` → bloqueado com a nova mensagem exigindo `CONFIRMO`, nenhuma chamada de rede feita;
+- override `/etc/systemd/system/whatsapp-mcp.service.d/allow-writes.conf` (`WHATSAPP_MCP_ALLOW_WRITES=true`) **mantido como estava** — não foi alterado nesta migração, decisão pendente com o operador (ver seção 7).
+
+## 7. Próximos passos (não-bloqueantes, na ordem de prioridade)
+
+1. Decidir com o operador se `WHATSAPP_MCP_ALLOW_WRITES=true` deve continuar ligado agora que o gate por confirmação (`CONFIRMO`) está ativo em produção (ver seção 6) — antes disso o flag era a única proteção e estava sozinho, ligado, sem o checklist cumprido.
+2. Construir o "gateway de eventos" já desenhado em `01_RAG` RAG-004/RAG-005 — hoje é só documentação, a implementação real (`events/`) ainda não existe.
 3. Migrar o Pós-Venda 360 do acesso direto à Evolution API para o gateway central (trabalho no repositório do Pós-Venda 360, não neste).
 4. Rotacionar a `EVOLUTION_API_KEY` — não há evidência de que isso já tenha sido feito desde que o projeto documentou essa pendência.
+5. Descomissionar `/root/whatsapp-mcp-hub/whatsapp-mcp` (caminho antigo) depois de um período de observação do novo deploy — ver `05_RUNBOOK` PARTE C5.
 
 ## 7. Segredos
 
