@@ -57,7 +57,11 @@ Testado nesta sessão, via o conector real conectado ao claude.ai (não script):
 
 Implementado o canal "gatilho de sistema" que antes era só arquitetura desenhada: serviço HTTP separado (`verticalparts-whatsapp-events`, porta 8011, `POST https://whatsapp-mcp.vpsistema.com/events`), sem `CONFIRMO` (não há humano/LLM na chamada) — segurança por token por sistema de origem (`config/systems.yaml`), template fixo nunca texto livre (`config/templates.yaml`), idempotência (SQLite) e o mesmo kill switch `WHATSAPP_MCP_ALLOW_WRITES`. Ver `01_RAG` RAG-006B para o modelo de segurança completo.
 
-Testado (Evolution API mockada, sem enviar mensagem real): autenticação por token isolada por sistema (um token de `vpclick` é recusado para `source: requisicoes`), template desconhecido recusado, campo de template ausente recusado, envio mockado com sucesso, replay de `idempotency_key` não reenvia. **Ainda não testado contra a Evolution API real** — nenhum sistema real emite eventos ainda (VP Click/Requisições/Pós-Venda/Borderô continuam sem essa integração do lado deles) — ver `05_RUNBOOK` PARTE H para quando isso acontecer.
+Testado localmente (Evolution API mockada, sem enviar mensagem real): autenticação por token isolada por sistema (um token de `vpclick` é recusado para `source: requisicoes`), template desconhecido recusado, campo de template ausente recusado, envio mockado com sucesso, replay de `idempotency_key` não reenvia.
+
+**Deploy público concluído e validado (2026-09-20)**: `verticalparts-whatsapp-events.service` ativo na VPS, `127.0.0.1:8011`, exposto em `https://whatsapp-mcp.vpsistema.com/events` (mesmo domínio/TLS do MCP, `location` separado no Nginx). Validado via HTTPS pública real: `GET /events/health` → `{"ok": true}`; `POST /events` com corpo incompleto → `400`; `POST /events` com campos completos mas sem `Authorization` → `401 "origem não autorizada ou token inválido"`; `GET /events/templates` → lista real dos 10 templates. 4 tokens únicos gerados em `config/systems.yaml` (um por sistema: `vpclick`, `requisicoes`, `posvenda360`, `bordero`), nunca vistos por esta LLM.
+
+**Ainda não testado**: um envio real (chegando de fato no WhatsApp) via `/events`, contra a Evolution API real — nenhum sistema real emite eventos ainda (VP Click/Requisições/Pós-Venda/Borderô continuam sem essa integração do lado deles) — ver `05_RUNBOOK` PARTE H para quando isso acontecer.
 
 ## 8. Próximos passos (não-bloqueantes, na ordem de prioridade)
 
