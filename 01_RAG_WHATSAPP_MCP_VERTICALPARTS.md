@@ -111,6 +111,8 @@ Correção aplicada: valor real editado direto no `.env` (`WHATSAPP_MCP_ALLOW_WR
 
 **Lição estrutural**: nunca confiar em `systemctl show -p Environment` nem na existência de um drop-in como prova de que uma flag de ambiente está de fato ativa num processo — validar sempre lendo o ambiente do processo em execução (`/proc/<pid>/environ`) ou o comportamento observado (uma chamada real recusada/aceita). Isso vale para qualquer flag crítica desta família de MCPs, não só `WHATSAPP_MCP_ALLOW_WRITES`.
 
+**Incidente relacionado, achado no mesmo teste (2026-09-20)**: a Edge Function `whatsapp-notify-event` do VP Click (`005_vpclick`) estava retornando `503 BOOT_ERROR` em produção — e isso já era verdade **antes** de qualquer mudança nesta sessão (confirmado reimplantando o código original sem alteração, mesmo erro). Só havia uma linha em `notification_dispatch_log` desde 19/09 18:04, apesar de mais de um dia de uso real depois disso — o motor de avisos do VP Click estava efetivamente fora do ar, sem alerta (disparo via `pg_net`, fire-and-forget, sem monitoramento). Causa raiz isolada por bissecção: o import `jsr:@supabase/supabase-js@2` falhava ao resolver/bootar nessa function especificamente no momento do deploy; trocar para `npm:@supabase/supabase-js@2` resolveu (confirmado: 503 → 401 normal). Corrigido e mesclado em `main` do `005_vpclick` (commit `166d47f`, PR de merge `ad70cf3`), junto com a integração do gateway. Detalhe completo em `01_RAG-005` acima e no histórico de commits daquele repositório.
+
 ## RAG-009 — Quando parar
 
 Pedir clarificação se:
